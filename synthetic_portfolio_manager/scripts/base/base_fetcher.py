@@ -1,130 +1,130 @@
-import requests
 import time
-import logging
 import hmac
 import hashlib
-from typing import Optional, Dict, Any, Union
-from datetime import datetime, timedelta
+import requests
+from typing import Dict, Optional, Any
 from urllib.parse import urlencode
+from datetime import datetime
+from utilities.logging_config import get_logger
 
 class BaseFetcher:
-    def __init__(self, base_url: str, api_key: Optional[str] = None, api_secret: Optional[str] = None,
-                 rate_limit: int = 1200):
+    def __init__(self, base_url: str, api_key: Optional[str] = None, 
+                 api_secret: Optional[str] = None, rate_limit: int = 1200):
         """Initialize base fetcher with API configuration
         
         Args:
-            base_url: Base URL for API requests
-            api_key: Optional API key for authenticated requests
-            api_secret: Optional API secret for request signing
+            base_url: Base URL for API endpoints
+            api_key: Optional API key for authenticated endpoints
+            api_secret: Optional API secret for signing requests
             rate_limit: Maximum requests per minute (default: 1200)
         """
         self.base_url = base_url.rstrip('/')
         self.api_key = api_key
         self.api_secret = api_secret
+        self.rate_limit = rate_limit
         self.session = requests.Session()
+        self.last_request_time = 0
+        self.logger = get_logger(self.__class__.__name__)
         
-        # Rate limiting
-        self.request_count = 0
-        self.request_window_start = datetime.now()
-        self.max_requests_per_minute = rate_limit
-        
-        # Setup logging
-        self.logger = logging.getLogger(self.__class__.__name__)
-        
-    def _get_headers(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, str]:
-        """Get headers for API request, including authentication if available"""
-        headers = {
-            'User-Agent': 'SPM/1.0',
-            'Accept': 'application/json',
-        }
-        
+        # Set up session headers
         if self.api_key:
-            headers['X-MBX-APIKEY'] = self.api_key
-            
-            # Add signature if api_secret is available
-            if self.api_secret and params:
-                query_string = urlencode(params)
-                signature = hmac.new(
-                    self.api_secret.encode('utf-8'),
-                    query_string.encode('utf-8'),
-                    hashlib.sha256
-                ).hexdigest()
-                params['signature'] = signature
-                
-        return headers
-        
-    def _check_rate_limit(self):
-        """Implement rate limiting"""
-        now = datetime.now()
-        # Reset counter if window has passed
-        if now - self.request_window_start > timedelta(minutes=1):
-            self.request_count = 0
-            self.request_window_start = now
-            
-        # Check if we're about to exceed rate limit
-        if self.request_count >= self.max_requests_per_minute:
-            sleep_time = 60 - (now - self.request_window_start).seconds
-            if sleep_time > 0:
-                self.logger.warning(f"Rate limit reached, sleeping for {sleep_time} seconds")
-                time.sleep(sleep_time)
-                self.request_count = 0
-                self.request_window_start = datetime.now()
-                
-    def fetch_data(self, endpoint: str, params: Optional[Dict] = None, method: str = 'GET', 
-                  authenticate: bool = False, retries: int = 3, retry_delay: int = 2) -> Optional[Any]:
-        """Enhanced fetch_data method with better error handling and rate limiting
+            self.session.headers.update({
+                'X-MBX-APIKEY': self.api_key
+            })
+    
+    def _add_signature(self, params: Dict) -> Dict:
+        """Add HMAC SHA256 signature to request parameters
         
         Args:
-            endpoint: API endpoint to call (without base URL)
-            params: Query parameters
-            method: HTTP method (GET/POST)
-            authenticate: Whether to use API key authentication
-            retries: Number of retries on failure
+            params: Request parameters to sign
+            
+        Returns:
+            Dict with signature added
+        """
+        if not self.api_secret:
+            return params
+            
+        # Add timestamp if not present
+        if 'timestamp' not in params:
+            params['timestamp'] = int(time.time() * 1000)
+            
+        # Create signature
+        query_string = urlencode(params)
+        signature = hmac.new(
+            self.api_secret.encode('utf-8'),
+            query_string.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        
+        params['signature'] = signature
+        return params
+    
+    def _wait_for_rate_limit(self):
+        """Implement rate limiting by waiting if necessary"""
+        if not self.rate_limit:
+            return
+            
+        # Calculate minimum time between requests
+        min_interval = 60.0 / self.rate_limit  # seconds per request
+        
+        # Wait if necessary
+        elapsed = time.time() - self.last_request_time
+        if elapsed < min_interval:
+            time.sleep(min_interval - elapsed)
+    
+    def fetch_data(self, endpoint: str, params: Optional[Dict] = None,
+                  method: str = 'GET', sign: bool = False,
+                  retry_count: int = 3, retry_delay: float = 1.0) -> Optional[Any]:
+        """Fetch data from API endpoint with rate limiting and retries
+        
+        Args:
+            endpoint: API endpoint path
+            params: Optional query parameters
+            method: HTTP method (default: 'GET')
+            sign: Whether to sign the request
+            retry_count: Number of retries on failure
             retry_delay: Delay between retries in seconds
             
         Returns:
-            Parsed JSON response or None on failure
+            Response data or None on error
         """
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"  # Ensure clean URL joining
-        headers = self._get_headers(endpoint, params) if authenticate else None
+        params = params or {}
+        endpoint = endpoint.lstrip('/')
+        url = f"{self.base_url}/{endpoint}"
         
-        for attempt in range(retries):
+        # Add signature if required
+        if sign:
+            params = self._add_signature(params)
+        
+        for attempt in range(retry_count):
             try:
-                self._check_rate_limit()
+                # Rate limiting
+                self._wait_for_rate_limit()
                 
+                # Make request
                 response = self.session.request(
                     method=method,
                     url=url,
-                    headers=headers,
                     params=params if method == 'GET' else None,
-                    json=params if method == 'POST' else None,
-                    timeout=30
+                    json=params if method != 'GET' else None
+                )
+                self.last_request_time = time.time()
+                
+                # Check for errors
+                response.raise_for_status()
+                
+                return response.json()
+                
+            except requests.exceptions.RequestException as e:
+                self.logger.warning(
+                    f"Request failed (attempt {attempt + 1}/{retry_count}): {str(e)}"
                 )
                 
-                self.request_count += 1
-                
-                # Log response status
-                self.logger.debug(f"Request to {url} returned status {response.status_code}")
-                
-                response.raise_for_status()
-                data = response.json()
-                
-                if self._validate_response(data):
-                    return data
-                else:
-                    self.logger.error(f"Invalid response format from {url}")
+                # Break if it's our last attempt
+                if attempt == retry_count - 1:
+                    raise
                     
-            except requests.exceptions.RequestException as e:
-                self.logger.error(f"Error fetching data from {url}: {str(e)}. Attempt {attempt + 1}/{retries}")
-                if attempt < retries - 1:
-                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
-                continue
-            except Exception as e:
-                self.logger.error(f"Unexpected error: {str(e)}")
-                break
+                # Wait before retrying
+                time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                 
         return None
-        
-    def _validate_response(self, response: Dict) -> bool:
-        """Validate API response format. Override this in specific implementations."""
-        return bool(response)
