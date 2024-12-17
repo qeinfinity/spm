@@ -1,0 +1,83 @@
+# Synthetic Portfolio Manager Configuration Example
+# Copy this file to config.yaml and fill in your values
+
+# Binance API Configuration
+binance:
+  # Your Binance API key (required for authenticated endpoints)
+  api_key: your_api_key_here
+  
+  # Your Binance API secret (required for authenticated endpoints)
+  api_secret: your_api_secret_here
+  
+  # Base URL for Binance API (optional, default shown)
+  base_url: https://api.binance.com
+  
+  # Rate limit in requests per minute (optional, default: 1200)
+  rate_limit: 1200
+  
+  # Futures API specific settings
+  futures:
+    base_url: https://fapi.binance.com
+    rate_limit: 1200
+
+# Coinglass API Configuration (for future implementation)
+coinglass:
+  # Your Coinglass API key
+  api_key: your_coinglass_api_key_here
+  
+  # Base URL for Coinglass API
+  base_url: https://open-api.coinglass.com
+  
+  # Rate limit in requests per minute
+  rate_limit: 100
+
+# Logging Configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR)
+  level: INFO
+  
+  # Directory for log files (relative to application root)
+  directory: logs
+  
+  # Maximum log file size in MB before rotation
+  max_file_size: 10
+  
+  # Number of backup log files to keep
+  backup_count: 5
+
+# Cache Configuration
+cache:
+  # Base directory for cache files (relative to application root)
+  directory: data/cache
+  
+  # Maximum age of cache files in hours before cleanup
+  max_age_hours: 24
+  
+  # Whether to compress cached files
+  compress: false
+
+# Data Collection Settings
+data:
+  # Default market type (spot or futures)
+  default_market: spot
+  
+  # Default symbol to fetch data for
+  default_symbol: BTCUSDT
+  
+  # List of symbols to monitor
+  symbols:
+    - BTCUSDT
+    - ETHUSDT
+    - SOLUSDT
+  
+  # Data types to collect
+  types:
+    - market
+    - orderbook
+    - trade
+  
+  # Collection intervals in seconds
+  intervals:
+    market: 60
+    orderbook: 30
+    trade: 15
