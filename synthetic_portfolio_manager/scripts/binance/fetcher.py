@@ -43,28 +43,28 @@ class BinanceFetcher:
             fetcher = self._get_fetcher(market_type)
             
             # Get 24hr ticker data
-            ticker_endpoint = '/ticker/24hr'
+            endpoint = '/api/v3/ticker/24hr' if market_type == 'spot' else '/fapi/v1/ticker/24hr'
             ticker_data = fetcher.fetch_data(
-                endpoint=ticker_endpoint,
+                endpoint=endpoint,
                 params={'symbol': symbol}
             )
             
             # For futures, get additional data
-            if market_type == 'futures':
+            if market_type == 'futures' and ticker_data:
                 # Get funding rate
                 funding_data = fetcher.fetch_data(
-                    endpoint='/fundingRate',
+                    endpoint='/fapi/v1/fundingRate',
                     params={'symbol': symbol}
                 )
                 
                 # Get open interest
                 oi_data = fetcher.fetch_data(
-                    endpoint='/openInterest',
+                    endpoint='/fapi/v1/openInterest',
                     params={'symbol': symbol}
                 )
                 
                 # Combine the data
-                if ticker_data and funding_data and oi_data:
+                if funding_data and oi_data:
                     ticker_data['fundingRate'] = funding_data[0]['fundingRate']
                     ticker_data['openInterest'] = float(oi_data['openInterest'])
                     
@@ -90,8 +90,10 @@ class BinanceFetcher:
         """
         try:
             fetcher = self._get_fetcher(market_type)
+            endpoint = '/api/v3/depth' if market_type == 'spot' else '/fapi/v1/depth'
+            
             data = fetcher.fetch_data(
-                endpoint='/depth',
+                endpoint=endpoint,
                 params={
                     'symbol': symbol,
                     'limit': limit
@@ -118,8 +120,10 @@ class BinanceFetcher:
         """
         try:
             fetcher = self._get_fetcher(market_type)
+            endpoint = '/api/v3/trades' if market_type == 'spot' else '/fapi/v1/trades'
+            
             data = fetcher.fetch_data(
-                endpoint='/trades',
+                endpoint=endpoint,
                 params={
                     'symbol': symbol,
                     'limit': limit
@@ -147,7 +151,7 @@ class BinanceFetcher:
                 raise ValueError("Futures market not configured")
                 
             data = self.futures_fetcher.fetch_data(
-                endpoint='/allForceOrders',
+                endpoint='/fapi/v1/allForceOrders',
                 params={
                     'symbol': symbol,
                     'limit': limit
@@ -177,7 +181,7 @@ class BinanceFetcher:
                 raise ValueError("Futures market not configured")
                 
             data = self.futures_fetcher.fetch_data(
-                endpoint='/fundingRate',
+                endpoint='/fapi/v1/fundingRate',
                 params={
                     'symbol': symbol,
                     'limit': limit
@@ -202,7 +206,7 @@ class BinanceFetcher:
         """
         try:
             fetcher = self._get_fetcher(market_type)
-            endpoint = '/exchangeInfo'
+            endpoint = '/api/v3/exchangeInfo' if market_type == 'spot' else '/fapi/v1/exchangeInfo'
             data = fetcher.fetch_data(endpoint=endpoint)
             return data
         except Exception as e:
