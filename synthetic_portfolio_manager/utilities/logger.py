@@ -1,19 +1,22 @@
-"""Custom logger for all modules."""
-
 import logging
 import os
-from datetime import datetime
 
-def setup_logger(name, log_file):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-    
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(formatter)
-    
-    logger.addHandler(file_handler)
-    return logger
+class Logger:
+    def __init__(self, log_name, log_file):
+        os.makedirs("logs", exist_ok=True)
+        logging.basicConfig(
+            filename=f"logs/{log_file}",
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s"
+        )
+        self.logger = logging.getLogger(log_name)
+
+    def log(self, message, level="info"):
+        if level == "error":
+            self.logger.error(message)
+        else:
+            self.logger.info(message)
+
+# Example usage
+logger = Logger("BinanceLogger", "api_calls.log")
+logger.log("Successfully fetched BTCUSDT data.")
