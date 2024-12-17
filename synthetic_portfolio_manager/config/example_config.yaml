@@ -1,0 +1,12 @@
+# Example configuration file - copy to config.yaml and fill in your values
+
+binance:
+  api_key: your_api_key_here
+  api_secret: your_api_secret_here
+  base_url: https://api.binance.com
+  rate_limit: 1200  # requests per minute
+
+coinglass:
+  api_key: your_api_key_here
+  base_url: https://open-api.coinglass.com
+  rate_limit: 100  # requests per minute
