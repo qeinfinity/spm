@@ -1,5 +1,5 @@
 from typing import Dict, Optional, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import os
 import yaml
@@ -36,7 +36,7 @@ class APIConfig:
 class LoggingConfig:
     level: LogLevel = LogLevel.INFO
     directory: str = 'logs'
-    max_file_size: int = 10  # MB
+    max_file_size: int = 10
     backup_count: int = 5
 
 @dataclass
@@ -47,7 +47,7 @@ class CacheConfig:
 
 @dataclass
 class DataCollectionIntervals:
-    market: int = 60  # seconds
+    market: int = 60
     orderbook: int = 30
     trade: int = 15
 
@@ -55,23 +55,17 @@ class DataCollectionIntervals:
 class DataConfig:
     default_market: MarketType = MarketType.SPOT
     default_symbol: str = 'BTCUSDT'
-    symbols: List[str] = None
-    types: List[DataType] = None
-    intervals: DataCollectionIntervals = DataCollectionIntervals()
-    
-    def __post_init__(self):
-        if self.symbols is None:
-            self.symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
-        if self.types is None:
-            self.types = [DataType.MARKET, DataType.ORDERBOOK, DataType.TRADE]
+    symbols: List[str] = field(default_factory=lambda: ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'])
+    types: List[DataType] = field(default_factory=lambda: [DataType.MARKET, DataType.ORDERBOOK, DataType.TRADE])
+    intervals: DataCollectionIntervals = field(default_factory=DataCollectionIntervals)
 
 @dataclass
 class Config:
     binance: APIConfig
     coinglass: APIConfig
-    logging: LoggingConfig = LoggingConfig()
-    cache: CacheConfig = CacheConfig()
-    data: DataConfig = DataConfig()
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    cache: CacheConfig = field(default_factory=CacheConfig)
+    data: DataConfig = field(default_factory=DataConfig)
     
     @classmethod
     def from_yaml(cls, path: str) -> 'Config':
