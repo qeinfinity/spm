@@ -1,0 +1,8 @@
+requests>=2.25.1
+pandas>=1.2.4
+numpy>=1.20.2
+apscheduler>=3.8.1
+python-binance>=1.0.15
+coinmarketcap>=5.0.3
+fredapi>=0.5.0
+pytest>=6.2.5
