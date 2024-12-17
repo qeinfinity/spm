@@ -4,12 +4,19 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-def setup_logging(log_dir: str = 'logs', level: int = logging.INFO) -> None:
+def setup_logging(
+    log_dir: str = 'logs',
+    level: int = logging.INFO,
+    max_bytes: int = 10*1024*1024,  # 10MB default
+    backup_count: int = 5
+) -> None:
     """Set up logging configuration for the application
     
     Args:
         log_dir: Directory to store log files
         level: Logging level (default: INFO)
+        max_bytes: Maximum size of each log file in bytes
+        backup_count: Number of backup files to keep
     """
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -26,8 +33,8 @@ def setup_logging(log_dir: str = 'logs', level: int = logging.INFO) -> None:
     # File handler with rotation
     file_handler = logging.handlers.RotatingFileHandler(
         log_file,
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
+        maxBytes=max_bytes,
+        backupCount=backup_count
     )
     file_handler.setFormatter(formatter)
     

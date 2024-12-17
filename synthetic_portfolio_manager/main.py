@@ -170,7 +170,7 @@ def setup_components(config: Config):
     processor = BinanceProcessor()
     
     cache = BinanceCache(
-        base_dir=config.cache.directory,
+        directory=config.cache.directory,
         max_age_hours=config.cache.max_age_hours,
         compress=config.cache.compress
     )
